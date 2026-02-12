@@ -1,0 +1,21 @@
+<div class="relative min-h-screen bg-slate-100 flex overflow-hidden">
+  <!-- Main Content Area -->
+  <!-- Margin-right adjusts dynamically when sidebar is open -->
+  <main
+    [class]="(isChatOpen ? 'mr-80' : 'mr-0') + ' flex-1 transition-all duration-300 ease-in-out'"
+  >
+    <app-main-form></app-main-form>
+  </main>
+
+  <!-- Sidebar Component -->
+  <app-copilot-sidebar [isOpen]="isChatOpen" (close)="isChatOpen = false"> </app-copilot-sidebar>
+
+  <!-- IMPORTANT: Place this at the bottom of the file -->
+  @if (!isChatOpen) {
+    <div class="fixed bottom-6 right-6 z-100">
+      <button mat-fab color="primary" (click)="isChatOpen = true">
+        <mat-icon>smart_toy</mat-icon>
+      </button>
+    </div>
+  }
+</div>

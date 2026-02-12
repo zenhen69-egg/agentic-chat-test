@@ -1,0 +1,38 @@
+/* You can add global styles to this file, and also import other style files */
+
+@import 'tailwindcss';
+
+.user-bubble {
+  @apply ml-auto bg-indigo-600 text-white rounded-br-none;
+}
+
+.assistant-bubble {
+  @apply mr-auto bg-white text-slate-700 border border-slate-200 rounded-bl-none;
+}
+
+/* Remove Mat-FormField bottom padding for a tighter chat UI */
+::ng-deep .no-subscript-wrapper .mat-mdc-form-field-subscript-wrapper {
+  display: none !important;
+}
+
+/* Custom Scrollbar for Chat */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full;
+}
+
+@keyframes bounce-subtle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 3s infinite ease-in-out;
+}
