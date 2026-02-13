@@ -8,6 +8,7 @@
 
   <form
     [formGroup]="profileForm"
+    (ngSubmit)="onSubmit()"
     class="space-y-8 bg-white p-10 rounded-2xl shadow-sm border border-slate-200"
   >
     <div class="grid grid-cols-1 gap-8">
@@ -50,10 +51,14 @@
       <button
         mat-flat-button
         color="primary"
-        class="w-full !py-6 !text-lg !rounded-xl font-bold shadow-lg shadow-indigo-200"
+        class="w-full !py-6 !text-lg !rounded-xl font-bold shadow-lg shadow-indigo-200 !flex !items-center !justify-center"
         type="submit"
+        [disabled]="isSubmitting"
       >
-        Save Profile
+        @if (isSubmitting) {
+          <mat-spinner diameter="20" class="mr-3" style="display: inline-block; vertical-align: middle;"></mat-spinner>
+        }
+        <span>{{ isSubmitting ? 'Submitting...' : 'Save Profile' }}</span>
       </button>
     </div>
   </form>

@@ -6,6 +6,12 @@
   <div class="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
     <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
       <mat-icon class="text-indigo-600">smart_toy</mat-icon> AI Copilot
+      @if (currentAction === 'request_confirmation') {
+        <span class="text-xs text-orange-600">⏳</span>
+      }
+      @if (currentAction === 'submit_request') {
+        <span class="text-xs text-green-600">✅</span>
+      }
     </h2>
     <!-- Close Button -->
     <button mat-icon-button (click)="toggleSidebar()" class="text-slate-400 hover:text-slate-600">
@@ -13,12 +19,12 @@
     </button>
   </div>
 
-  <!-- Chat Messages (remains the same) -->
-  <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+  <!-- Chat Messages -->
+  <div #chatMessages class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
     <div
       *ngFor="let msg of messages"
       [ngClass]="msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'"
-      class="max-w-[90%] rounded-2xl p-3 text-sm shadow-sm"
+      class="max-w-[90%] rounded-2xl p-3 text-sm shadow-sm whitespace-pre-wrap"
     >
       {{ msg.content }}
     </div>
@@ -28,12 +34,14 @@
   <div class="p-4 bg-white border-t border-slate-200">
     <mat-form-field appearance="outline" class="w-full no-subscript-wrapper">
       <input
+        #chatInput
         matInput
         placeholder="Ask Copilot..."
         [(ngModel)]="userInput"
         (keyup.enter)="sendToAgent()"
+        [disabled]="isSending"
       />
-      <button matSuffix mat-icon-button (click)="sendToAgent()">
+      <button matSuffix mat-icon-button (click)="sendToAgent()" [disabled]="isSending">
         <mat-icon>send</mat-icon>
       </button>
     </mat-form-field>

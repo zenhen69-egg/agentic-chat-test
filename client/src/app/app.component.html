@@ -4,11 +4,23 @@
   <main
     [class]="(isChatOpen ? 'mr-80' : 'mr-0') + ' flex-1 transition-all duration-300 ease-in-out'"
   >
-    <app-main-form></app-main-form>
+    <app-main-form
+      [profile]="profile"
+      [isSubmitting]="isSubmitting()"
+      (profileChange)="handleProfileChange($event)"
+      (submitForm)="handleSubmitRequest()"
+    ></app-main-form>
   </main>
 
   <!-- Sidebar Component -->
-  <app-copilot-sidebar [isOpen]="isChatOpen" (close)="isChatOpen = false"> </app-copilot-sidebar>
+  <app-copilot-sidebar
+    [isOpen]="isChatOpen"
+    [profile]="profile"
+    (profileUpdate)="handleProfileUpdate($event)"
+    (submitRequest)="onActualSubmit()"
+    (close)="isChatOpen = false"
+  >
+  </app-copilot-sidebar>
 
   <!-- IMPORTANT: Place this at the bottom of the file -->
   @if (!isChatOpen) {
