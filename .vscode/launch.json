@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    
+
+    {
+      "name": "API: Uvicorn (Debug)",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "python": "/home/dev/agentic-tests/agentic-chat-test/api/.venv/bin/python",
+      "args": [
+        "api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--log-level",
+        "debug"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/dev/agentic-tests/agentic-chat-test"
+      },
+      "cwd": "/home/dev/agentic-tests/agentic-chat-test",
+      "console": "integratedTerminal",
+      "subProcess": true,
+      "justMyCode": true
+    }
+  ]
+}

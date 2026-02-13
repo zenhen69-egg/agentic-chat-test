@@ -24,7 +24,7 @@ import { UserProfile } from './shared/models/profile';
 export class AppComponent {
   @ViewChild(CopilotSidebarComponent) copilotSidebar!: CopilotSidebarComponent;
   
-  isChatOpen = true; // Default state
+  isChatOpen = false; // Default state
   isSubmitting = signal(false);
   profile: UserProfile = {
     fullName: '',

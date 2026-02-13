@@ -1,4 +1,16 @@
-import { Component, EventEmitter, Input, Output, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  NgZone,
+  OnChanges,
+  OnDestroy,
+  OnInit,
+  Output,
+  SimpleChanges,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -28,8 +40,7 @@ import { AgentApiService } from '../services/agent-api.service';
   templateUrl: './copilot-sidebar.html',
   styleUrls: ['./copilot-sidebar.css'],
 })
-export class CopilotSidebarComponent {
-  @ViewChild('chatInput') chatInput!: ElementRef<HTMLInputElement>;
+export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
   @ViewChild('chatMessages') chatMessages!: ElementRef<HTMLDivElement>;
   @Input() isOpen = true;
   @Input() profile: UserProfile = {
@@ -45,6 +56,12 @@ export class CopilotSidebarComponent {
   isSending = false;
   sessionId = '';
   currentAction = '';
+  isListening = false;
+  speechSupported = false;
+  liveTranscript = '';
+  speechError = '';
+  private recognition: any = null;
+  private shouldRestart = false;
 
   messages: AgentMessage[] = [
     {
@@ -53,7 +70,28 @@ export class CopilotSidebarComponent {
     },
   ];
 
-  constructor(private agentApi: AgentApiService) {}
+  constructor(private agentApi: AgentApiService, private ngZone: NgZone) {}
+
+  ngOnInit() {
+    this.setupSpeechRecognition();
+    if (this.isOpen) {
+      this.startListening();
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['isOpen']) {
+      if (this.isOpen) {
+        this.startListening();
+      } else {
+        this.stopListening();
+      }
+    }
+  }
+
+  ngOnDestroy() {
+    this.stopListening();
+  }
 
   private scrollToBottom() {
     setTimeout(() => {
@@ -61,6 +99,95 @@ export class CopilotSidebarComponent {
         this.chatMessages.nativeElement.scrollTop = this.chatMessages.nativeElement.scrollHeight;
       }
     }, 100);
+  }
+
+  private setupSpeechRecognition() {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      this.speechSupported = false;
+      this.speechError = 'Voice input is not supported in this browser.';
+      return;
+    }
+
+    this.speechSupported = true;
+    this.recognition = new SpeechRecognition();
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'en-US';
+
+    this.recognition.onresult = (event: any) => {
+      this.ngZone.run(() => {
+        this.speechError = '';
+        let interimText = '';
+        let finalText = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalText += result[0].transcript;
+          } else {
+            interimText += result[0].transcript;
+          }
+        }
+
+        if (interimText.trim()) {
+          this.liveTranscript = interimText.trim();
+        }
+
+        if (finalText.trim()) {
+          const cleaned = finalText.trim();
+          this.liveTranscript = cleaned;
+          this.sendProgrammaticMessage(cleaned);
+        }
+      });
+    };
+
+    this.recognition.onerror = () => {
+      this.ngZone.run(() => {
+        this.isListening = false;
+        this.speechError = 'Microphone access is blocked. Please enable it for this site.';
+        if (this.shouldRestart && this.isOpen && !this.isSending) {
+          setTimeout(() => this.startListening(), 500);
+        }
+      });
+    };
+
+    this.recognition.onend = () => {
+      this.ngZone.run(() => {
+        const restart = this.shouldRestart && this.isOpen && !this.isSending;
+        this.isListening = false;
+        if (restart) {
+          this.startListening();
+        }
+      });
+    };
+  }
+
+  startListening() {
+    if (!this.speechSupported || this.isListening || this.isSending) {
+      return;
+    }
+
+    this.shouldRestart = true;
+    this.liveTranscript = '';
+    this.speechError = '';
+    try {
+      this.recognition?.start();
+      this.isListening = true;
+    } catch {
+      this.speechError = 'Unable to start microphone. Check browser permissions.';
+      this.isListening = false;
+    }
+  }
+
+  stopListening() {
+    this.shouldRestart = false;
+    if (this.recognition && this.isListening) {
+      this.recognition.stop();
+    }
+    this.isListening = false;
   }
 
   // Public method to programmatically send messages
@@ -71,21 +198,52 @@ export class CopilotSidebarComponent {
 
   // Public method to reset the session
   resetSession() {
-    this.sessionId = '';
-    this.currentAction = '';
-    this.messages = [
-      {
-        role: 'assistant',
-        content: 'Hello! I can help you fill out this form. Just tell me what to do.',
-      },
-    ];
+    this.ngZone.run(() => {
+      this.stopListening();
+      this.sessionId = '';
+      this.currentAction = '';
+      this.liveTranscript = '';
+      this.speechError = '';
+      this.userInput = '';
+      this.isSending = false;
+      this.profileUpdate.emit({
+        fullName: '',
+        email: '',
+        bio: '',
+        isComplete: false,
+      });
+      this.messages = [
+        {
+          role: 'assistant',
+          content: 'Hello! I can help you fill out this form. Just tell me what to do.',
+        },
+      ];
+      this.scrollToBottom();
+    });
   }
 
   sendToAgent() {
     if (!this.userInput.trim() || this.isSending) return;
 
     const userMessage = this.userInput.trim();
+    if (userMessage.toLowerCase() === 'cancel') {
+      this.messages.push({ role: 'user', content: userMessage });
+      this.resetSession();
+      this.messages.push({
+        role: 'assistant',
+        content: 'All set. I started a new session. What would you like to do next?',
+      });
+      this.scrollToBottom();
+      if (this.isOpen) {
+        this.startListening();
+      }
+      return;
+    }
     this.isSending = true;
+
+    if (this.isListening) {
+      this.stopListening();
+    }
 
     this.messages.push({ role: 'user', content: userMessage });
     this.userInput = '';
@@ -116,11 +274,10 @@ export class CopilotSidebarComponent {
         this.profileUpdate.emit(updatedProfile);
         this.isSending = false;
         this.scrollToBottom();
-        
-        // Refocus the input after request completes
-        setTimeout(() => {
-          this.chatInput?.nativeElement?.focus();
-        }, 0);
+
+        if (this.isOpen) {
+          this.startListening();
+        }
       },
       error: () => {
         this.messages.push({
@@ -129,11 +286,10 @@ export class CopilotSidebarComponent {
         });
         this.isSending = false;
         this.scrollToBottom();
-        
-        // Refocus the input after error
-        setTimeout(() => {
-          this.chatInput?.nativeElement?.focus();
-        }, 0);
+
+        if (this.isOpen) {
+          this.startListening();
+        }
       },
     });
   }

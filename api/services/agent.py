@@ -70,6 +70,8 @@ def _extract_name(message: str) -> str | None:
 def _extract_bio(message: str) -> str | None:
     patterns = [
         r"\bbio\s*[:=]\s*(.+)$",
+        r"\bbio\s+is\s+(.+)$",
+        r"\bmy\s+bio\s+is\s+(.+)$",
         r"\bchange\s+(my\s+)?bio\s+to\s+(.+)$",
         r"\bupdate\s+(my\s+)?bio\s+to\s+(.+)$",
         r"\bset\s+(my\s+)?bio\s+to\s+(.+)$",
