@@ -16,6 +16,8 @@
   <app-copilot-sidebar
     [isOpen]="isChatOpen"
     [profile]="profile"
+    [showKeyboard]="isTesting"
+    [autoListen]="!isTesting"
     (profileUpdate)="handleProfileUpdate($event)"
     (submitRequest)="onActualSubmit()"
     (close)="isChatOpen = false"

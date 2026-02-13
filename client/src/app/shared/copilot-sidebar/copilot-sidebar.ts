@@ -43,6 +43,8 @@ import { AgentApiService } from '../services/agent-api.service';
 export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
   @ViewChild('chatMessages') chatMessages!: ElementRef<HTMLDivElement>;
   @Input() isOpen = true;
+  @Input() showKeyboard = false;
+  @Input() autoListen = true;
   @Input() profile: UserProfile = {
     fullName: '',
     email: '',
@@ -74,7 +76,7 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnInit() {
     this.setupSpeechRecognition();
-    if (this.isOpen) {
+    if (this.isOpen && this.autoListen) {
       this.startListening();
     }
   }
@@ -82,6 +84,15 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['isOpen']) {
       if (this.isOpen) {
+        if (this.autoListen) {
+          this.startListening();
+        }
+      } else {
+        this.stopListening();
+      }
+    }
+    if (changes['autoListen'] && this.isOpen) {
+      if (this.autoListen) {
         this.startListening();
       } else {
         this.stopListening();
@@ -166,7 +177,7 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   startListening() {
-    if (!this.speechSupported || this.isListening || this.isSending) {
+    if (!this.autoListen || !this.speechSupported || this.isListening || this.isSending) {
       return;
     }
 
@@ -219,6 +230,9 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
         },
       ];
       this.scrollToBottom();
+      if (this.isOpen && this.autoListen) {
+        this.startListening();
+      }
     });
   }
 
@@ -234,7 +248,7 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
         content: 'All set. I started a new session. What would you like to do next?',
       });
       this.scrollToBottom();
-      if (this.isOpen) {
+      if (this.isOpen && this.autoListen) {
         this.startListening();
       }
       return;
@@ -275,7 +289,7 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
         this.isSending = false;
         this.scrollToBottom();
 
-        if (this.isOpen) {
+        if (this.isOpen && this.autoListen) {
           this.startListening();
         }
       },
@@ -287,7 +301,7 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
         this.isSending = false;
         this.scrollToBottom();
 
-        if (this.isOpen) {
+        if (this.isOpen && this.autoListen) {
           this.startListening();
         }
       },

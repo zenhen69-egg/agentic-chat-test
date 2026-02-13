@@ -6,6 +6,7 @@ import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { MatButtonModule, MatFabButton } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { UserProfile } from './shared/models/profile';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ export class AppComponent {
   
   isChatOpen = false; // Default state
   isSubmitting = signal(false);
+  isTesting = environment.copilotTesting ?? false;
   profile: UserProfile = {
     fullName: '',
     email: '',

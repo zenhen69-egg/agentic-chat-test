@@ -74,19 +74,21 @@
         </button>
       </div>
     </div>
-    <div class="mt-4">
-      <mat-form-field appearance="outline" class="w-full no-subscript-wrapper">
-        <input
-          matInput
-          placeholder="Type your message..."
-          [(ngModel)]="userInput"
-          (keyup.enter)="sendToAgent()"
-          [disabled]="isSending"
-        />
-        <button matSuffix mat-icon-button (click)="sendToAgent()" [disabled]="isSending">
-          <mat-icon>send</mat-icon>
-        </button>
-      </mat-form-field>
-    </div>
+    @if (showKeyboard) {
+      <div class="mt-4">
+        <mat-form-field appearance="outline" class="w-full no-subscript-wrapper">
+          <input
+            matInput
+            placeholder="Type your message..."
+            [(ngModel)]="userInput"
+            (keyup.enter)="sendToAgent()"
+            [disabled]="isSending"
+          />
+          <button matSuffix mat-icon-button (click)="sendToAgent()" [disabled]="isSending">
+            <mat-icon>send</mat-icon>
+          </button>
+        </mat-form-field>
+      </div>
+    }
   </div>
 </div>
