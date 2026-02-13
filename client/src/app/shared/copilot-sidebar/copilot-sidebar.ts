@@ -17,13 +17,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import {
-  AgentChatRequest,
-  AgentChatResponse,
-  AgentMessage,
-  AgentProfilePayload,
-  UserProfile,
-} from '../models/profile';
+import { FeatureKey, AgentMessage } from '../models/chat';
+import { SortingInput, SortingInputPayload } from '../../features/sorting-input/models';
+import { SortingChatRequest, SortingChatResponse } from '../../features/sorting-input/types';
+import { UserProfile, UserProfilePayload } from '../../features/user-profile/models';
+import { UserProfileChatRequest, UserProfileChatResponse } from '../../features/user-profile/types';
 import { AgentApiService } from '../services/agent-api.service';
 
 @Component({
@@ -45,15 +43,17 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
   @Input() isOpen = true;
   @Input() showKeyboard = false;
   @Input() autoListen = true;
-  @Input() profile: UserProfile = {
+  @Input() allowVoiceInTesting = false;
+  @Input() feature: FeatureKey = 'user-profile';
+  @Input() profile: UserProfile | SortingInput = {
     fullName: '',
     email: '',
     bio: '',
     isComplete: false,
   };
   @Output() close = new EventEmitter<void>();
-  @Output() profileUpdate = new EventEmitter<UserProfile>();
-  @Output() submitRequest = new EventEmitter<void>();
+  @Output() profileUpdate = new EventEmitter<{ feature: FeatureKey; profile: UserProfile | SortingInput }>();
+  @Output() submitRequest = new EventEmitter<FeatureKey>();
   userInput = '';
   isSending = false;
   sessionId = '';
@@ -64,27 +64,54 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
   speechError = '';
   private recognition: any = null;
   private shouldRestart = false;
+  voiceEnabled = true;
 
-  messages: AgentMessage[] = [
-    {
-      role: 'assistant',
-      content: 'Hello! I can help you fill out this form. Just tell me what to do.',
-    },
-  ];
+  messages: AgentMessage[] = [];
 
-  constructor(private agentApi: AgentApiService, private ngZone: NgZone) {}
+  private featureState: Record<FeatureKey, { sessionId: string; currentAction: string; messages: AgentMessage[] }>;
+
+  constructor(private agentApi: AgentApiService, private ngZone: NgZone) {
+    this.featureState = {
+      'user-profile': {
+        sessionId: '',
+        currentAction: '',
+        messages: [
+          {
+            role: 'assistant',
+            content: this.getWelcomeMessage('user-profile'),
+          },
+        ],
+      },
+      'sorting-input': {
+        sessionId: '',
+        currentAction: '',
+        messages: [
+          {
+            role: 'assistant',
+            content: this.getWelcomeMessage('sorting-input'),
+          },
+        ],
+      },
+    };
+    this.syncFeatureState();
+  }
 
   ngOnInit() {
     this.setupSpeechRecognition();
-    if (this.isOpen && this.autoListen) {
+    this.voiceEnabled = this.autoListen;
+    if (this.isOpen && this.canListen()) {
       this.startListening();
     }
   }
 
   ngOnChanges(changes: SimpleChanges) {
+    if (changes['feature']) {
+      this.syncFeatureState();
+      this.scrollToBottom();
+    }
     if (changes['isOpen']) {
       if (this.isOpen) {
-        if (this.autoListen) {
+        if (this.canListen()) {
           this.startListening();
         }
       } else {
@@ -92,12 +119,23 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
       }
     }
     if (changes['autoListen'] && this.isOpen) {
-      if (this.autoListen) {
+      this.voiceEnabled = this.autoListen;
+      if (this.canListen()) {
         this.startListening();
       } else {
         this.stopListening();
       }
     }
+  }
+
+  get featureTitle(): string {
+    return this.feature === 'sorting-input' ? 'Sorting Input' : 'User Profile';
+  }
+
+  get voicePlaceholder(): string {
+    return this.feature === 'sorting-input'
+      ? 'Speak your sorter ID and tag serial number.'
+      : 'Speak your details to update the profile.';
   }
 
   ngOnDestroy() {
@@ -149,8 +187,9 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
 
         if (finalText.trim()) {
           const cleaned = finalText.trim();
-          this.liveTranscript = cleaned;
-          this.sendProgrammaticMessage(cleaned);
+          const normalized = this.normalizeVoiceInput(cleaned);
+          this.liveTranscript = normalized;
+          this.sendProgrammaticMessage(normalized);
         }
       });
     };
@@ -177,7 +216,7 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   startListening() {
-    if (!this.autoListen || !this.speechSupported || this.isListening || this.isSending) {
+    if (!this.canListen() || !this.speechSupported || this.isListening || this.isSending) {
       return;
     }
 
@@ -201,6 +240,18 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
     this.isListening = false;
   }
 
+  toggleVoiceEnabled() {
+    if (!this.allowVoiceInTesting) {
+      return;
+    }
+    this.voiceEnabled = !this.voiceEnabled;
+    if (this.voiceEnabled && this.isOpen && !this.isSending) {
+      this.startListening();
+    } else {
+      this.stopListening();
+    }
+  }
+
   // Public method to programmatically send messages
   sendProgrammaticMessage(message: string) {
     this.userInput = message;
@@ -218,19 +269,18 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
       this.userInput = '';
       this.isSending = false;
       this.profileUpdate.emit({
-        fullName: '',
-        email: '',
-        bio: '',
-        isComplete: false,
+        feature: this.feature,
+        profile: this.getEmptyProfile(),
       });
       this.messages = [
         {
           role: 'assistant',
-          content: 'Hello! I can help you fill out this form. Just tell me what to do.',
+          content: this.getWelcomeMessage(this.feature),
         },
       ];
+      this.updateFeatureState();
       this.scrollToBottom();
-      if (this.isOpen && this.autoListen) {
+      if (this.isOpen && this.canListen()) {
         this.startListening();
       }
     });
@@ -248,7 +298,7 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
         content: 'All set. I started a new session. What would you like to do next?',
       });
       this.scrollToBottom();
-      if (this.isOpen && this.autoListen) {
+      if (this.isOpen && this.canListen()) {
         this.startListening();
       }
       return;
@@ -263,56 +313,54 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
     this.userInput = '';
     this.scrollToBottom();
 
-    const payload: AgentChatRequest = {
-      message: userMessage,
-      history: this.messages,
-      profile: this.toApiProfile(this.profile),
-      session_id: this.sessionId || undefined,
-    };
-
-    this.agentApi.sendMessage(payload).subscribe({
-      next: (response: AgentChatResponse) => {
-        this.sessionId = response.session_id;
-        this.currentAction = response.action;
-        
-        let displayMessage = response.message;
-        if (response.action === 'submit_request') {
-          displayMessage += '\n\n✅ **[SUBMITTED]** Your request has been successfully submitted!';
-          this.submitRequest.emit();
-        } else if (response.action === 'request_confirmation') {
-          displayMessage += '\n\n⏳ **[AWAITING CONFIRMATION]** Please confirm to proceed.';
-        }
-        
-        this.messages.push({ role: 'assistant', content: displayMessage });
-        const updatedProfile = this.fromApiProfile(response.profile);
-        this.profileUpdate.emit(updatedProfile);
-        this.isSending = false;
-        this.scrollToBottom();
-
-        if (this.isOpen && this.autoListen) {
-          this.startListening();
-        }
-      },
-      error: () => {
-        this.messages.push({
-          role: 'assistant',
-          content: 'Sorry, I ran into an error. Please try again.',
-        });
-        this.isSending = false;
-        this.scrollToBottom();
-
-        if (this.isOpen && this.autoListen) {
-          this.startListening();
-        }
-      },
-    });
+    if (this.feature === 'sorting-input') {
+      const payload: SortingChatRequest = {
+        message: userMessage,
+        history: this.messages,
+        sorting: this.toApiSorting(this.profile as SortingInput),
+        session_id: this.sessionId || undefined,
+      };
+      this.agentApi.sendSortingMessage(payload).subscribe({
+        next: (response: SortingChatResponse) => {
+          this.handleAgentResponse(response.action, response.message);
+          const updatedSorting = this.fromApiSorting(response.sorting);
+          this.profileUpdate.emit({ feature: this.feature, profile: updatedSorting });
+          this.sessionId = response.session_id;
+          this.currentAction = response.action;
+          this.updateFeatureState();
+        },
+        error: () => {
+          this.handleAgentError();
+        },
+      });
+    } else {
+      const payload: UserProfileChatRequest = {
+        message: userMessage,
+        history: this.messages,
+        profile: this.toApiProfile(this.profile as UserProfile),
+        session_id: this.sessionId || undefined,
+      };
+      this.agentApi.sendProfileMessage(payload).subscribe({
+        next: (response: UserProfileChatResponse) => {
+          this.handleAgentResponse(response.action, response.message);
+          const updatedProfile = this.fromApiProfile(response.profile);
+          this.profileUpdate.emit({ feature: this.feature, profile: updatedProfile });
+          this.sessionId = response.session_id;
+          this.currentAction = response.action;
+          this.updateFeatureState();
+        },
+        error: () => {
+          this.handleAgentError();
+        },
+      });
+    }
   }
 
   toggleSidebar() {
     this.close.emit();
   }
 
-  private toApiProfile(profile: UserProfile): AgentProfilePayload {
+  private toApiProfile(profile: UserProfile): UserProfilePayload {
     return {
       full_name: profile.fullName,
       email: profile.email,
@@ -321,12 +369,171 @@ export class CopilotSidebarComponent implements OnInit, OnChanges, OnDestroy {
     };
   }
 
-  private fromApiProfile(profile: AgentProfilePayload): UserProfile {
+  private fromApiProfile(profile: UserProfilePayload): UserProfile {
     return {
       fullName: profile.full_name || '',
       email: profile.email || '',
       bio: profile.bio || '',
       isComplete: profile.is_complete ?? false,
     };
+  }
+
+  private toApiSorting(sorting: SortingInput): SortingInputPayload {
+    return {
+      sorter_id: sorting.sorterId,
+      tag_serial_no: sorting.tagSerialNo,
+      is_complete: sorting.isComplete,
+    };
+  }
+
+  private fromApiSorting(sorting: SortingInputPayload): SortingInput {
+    return {
+      sorterId: sorting.sorter_id || '',
+      tagSerialNo: sorting.tag_serial_no || '',
+      isComplete: sorting.is_complete ?? false,
+    };
+  }
+
+  private handleAgentResponse(action: string, message: string) {
+    let displayMessage = message;
+    if (action === 'submit_request') {
+      displayMessage += '\n\n✅ **[SUBMITTED]** Your request has been successfully submitted!';
+      this.submitRequest.emit(this.feature);
+    } else if (action === 'request_confirmation') {
+      displayMessage += '\n\n⏳ **[AWAITING CONFIRMATION]** Please confirm to proceed.';
+    }
+
+    this.messages.push({ role: 'assistant', content: displayMessage });
+    this.isSending = false;
+    this.scrollToBottom();
+
+    if (this.isOpen && this.canListen()) {
+      this.startListening();
+    }
+  }
+
+  private handleAgentError() {
+    this.messages.push({
+      role: 'assistant',
+      content: 'Sorry, I ran into an error. Please try again.',
+    });
+    this.isSending = false;
+    this.scrollToBottom();
+
+    if (this.isOpen && this.canListen()) {
+      this.startListening();
+    }
+  }
+
+  private getWelcomeMessage(feature: FeatureKey): string {
+    return feature === 'sorting-input'
+      ? 'Hi! Share the sorter ID and tag serial number, and I will fill those in for you.'
+      : 'Hello! I can help you fill out this form. Just tell me what to do.';
+  }
+
+  private getEmptyProfile(): UserProfile | SortingInput {
+    if (this.feature === 'sorting-input') {
+      return { sorterId: '', tagSerialNo: '', isComplete: false };
+    }
+    return { fullName: '', email: '', bio: '', isComplete: false };
+  }
+
+  private syncFeatureState() {
+    const state = this.featureState[this.feature];
+    this.sessionId = state.sessionId;
+    this.currentAction = state.currentAction;
+    this.messages = state.messages;
+  }
+
+  private updateFeatureState() {
+    const state = this.featureState[this.feature];
+    state.sessionId = this.sessionId;
+    state.currentAction = this.currentAction;
+    state.messages = this.messages;
+  }
+
+  private canListen(): boolean {
+    return this.autoListen || (this.allowVoiceInTesting && this.voiceEnabled);
+  }
+
+  private normalizeVoiceInput(text: string): string {
+    let normalized = text;
+
+    normalized = normalized.replace(/\s+(equals|=)\s+/gi, ' = ');
+    normalized = normalized.replace(/\s*:\s*/g, ' : ');
+    normalized = normalized.replace(/\s+at\s+/gi, '@');
+    normalized = normalized.replace(/\s+dot\s+/gi, '.');
+    normalized = normalized.replace(/\s+underscore\s+/gi, '_');
+    normalized = normalized.replace(/\s+dash\s+/gi, '-');
+
+    normalized = this.collapseSpelledSequences(normalized);
+    normalized = this.collapseValueAfterKeyword(normalized);
+    if (this.feature === 'sorting-input') {
+      normalized = this.collapseSortingValues(normalized);
+    }
+
+    normalized = normalized.replace(/\s{2,}/g, ' ').trim();
+
+    return normalized;
+  }
+
+  private collapseSpelledSequences(text: string): string {
+    const sequencePattern = /(?:\b[A-Za-z0-9]{1,2}\b\s+){2,}\b[A-Za-z0-9]{1,2}\b/g;
+    return text.replace(sequencePattern, (match) => {
+      const parts = match.trim().split(/\s+/);
+      const hasSingleChar = parts.some((part) => part.length === 1);
+      if (!hasSingleChar) {
+        return match;
+      }
+      return parts.join('');
+    });
+  }
+
+  private collapseValueAfterKeyword(text: string): string {
+    const valuePattern = /(\b(?:is|equals|=|to|:)\b\s+)([A-Za-z0-9@._-]+(?:\s+[A-Za-z0-9@._-]+)+)/gi;
+    return text.replace(valuePattern, (_match, prefix: string, value: string) => {
+      const collapsed = value.replace(/\s+/g, '');
+      return `${prefix}${collapsed}`;
+    });
+  }
+
+  private collapseSortingValues(text: string): string {
+    const tokens = text.trim().split(/\s+/);
+    const stopwords = new Set([
+      'sorter',
+      'id',
+      'tag',
+      'serial',
+      'no',
+      'number',
+      'is',
+      'equals',
+      '=',
+      'to',
+      ':',
+    ]);
+    const result: string[] = [];
+    let buffer: string[] = [];
+
+    const flush = () => {
+      if (buffer.length) {
+        result.push(buffer.join(''));
+        buffer = [];
+      }
+    };
+
+    for (const token of tokens) {
+      const lower = token.toLowerCase();
+      const isValueToken = /^[A-Za-z0-9@._-]+$/.test(token) && !stopwords.has(lower);
+      if (isValueToken) {
+        buffer.push(token);
+      } else {
+        flush();
+        result.push(token);
+      }
+    }
+    flush();
+
+    return result.join(' ');
   }
 }

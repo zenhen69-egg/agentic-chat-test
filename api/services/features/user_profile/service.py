@@ -1,8 +1,12 @@
 from api.schemas.profile import AgentChatResponse, UserProfileUpdate
-from api.services.agentic.extractors import extract_bio, extract_email, extract_name
-from api.services.agentic.pipeline import run_agentic_pipeline
-from api.services.agentic.session import ensure_session_id, get_session_state
-from api.services.agentic.utils import (
+from api.services.features.user_profile.extractors import (
+    extract_bio,
+    extract_email,
+    extract_name,
+)
+from api.services.features.user_profile.pipeline import run_agentic_pipeline
+from api.services.features.user_profile.session import ensure_session_id, get_session_state
+from api.services.features.user_profile.utils import (
     build_missing_message,
     clean_value,
     format_profile_details,
@@ -13,7 +17,7 @@ from api.services.agentic.utils import (
 )
 
 
-async def process_agent_chat(
+async def process_user_profile_chat(
     user_message: str,
     history: list,
     profile: UserProfileUpdate,

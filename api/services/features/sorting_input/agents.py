@@ -1,11 +1,19 @@
 from agents import Agent, AgentOutputSchema
-from api.services.agentic.config import MODEL_SETTINGS, OPENAI_MODEL
-from api.services.agentic.outputs import ConfirmationOutput, ExtractionOutput, ValidationOutput
-from api.services.agentic.prompts import CONFIRMATION_PROMPT, EXTRACTION_PROMPT, VALIDATION_PROMPT
+from api.services.features.sorting_input.config import MODEL_SETTINGS, OPENAI_MODEL
+from api.services.features.sorting_input.outputs import (
+    ConfirmationOutput,
+    ExtractionOutput,
+    ValidationOutput,
+)
+from api.services.features.sorting_input.prompts import (
+    CONFIRMATION_PROMPT,
+    EXTRACTION_PROMPT,
+    VALIDATION_PROMPT,
+)
 
 
 extraction_agent = Agent(
-    name="ProfileExtractionAgent",
+    name="SortingExtractionAgent",
     instructions=EXTRACTION_PROMPT,
     model=OPENAI_MODEL,
     model_settings=MODEL_SETTINGS,
@@ -14,7 +22,7 @@ extraction_agent = Agent(
 
 
 validation_agent = Agent(
-    name="ValidationAgent",
+    name="SortingValidationAgent",
     instructions=VALIDATION_PROMPT,
     model=OPENAI_MODEL,
     model_settings=MODEL_SETTINGS,
@@ -23,7 +31,7 @@ validation_agent = Agent(
 
 
 confirmation_agent = Agent(
-    name="ConfirmationAgent",
+    name="SortingConfirmationAgent",
     instructions=CONFIRMATION_PROMPT,
     model=OPENAI_MODEL,
     model_settings=MODEL_SETTINGS,

@@ -1,10 +1,10 @@
 import json
 from agents import Agent, AgentOutputSchema, Runner
 from api.schemas.profile import UserProfileUpdate
-from api.services.agentic.config import MODEL_SETTINGS, OPENAI_API_KEY, OPENAI_MODEL
-from api.services.agentic.outputs import AgenticOutput
-from api.services.agentic.prompts import MAIN_PROMPT
-from api.services.agentic.tools import (
+from api.services.features.user_profile.config import MODEL_SETTINGS, OPENAI_API_KEY, OPENAI_MODEL
+from api.services.features.user_profile.outputs import AgenticOutput
+from api.services.features.user_profile.prompts import MAIN_PROMPT
+from api.services.features.user_profile.tools import (
     craft_confirmation_message,
     extract_profile_fields,
     validate_profile_state,

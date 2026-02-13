@@ -2,24 +2,38 @@
   <!-- Main Content Area -->
   <!-- Margin-right adjusts dynamically when sidebar is open -->
   <main
-    [class]="(isChatOpen ? 'mr-80' : 'mr-0') + ' flex-1 transition-all duration-300 ease-in-out'"
+    [class]="(isChatOpen ? 'mr-96' : 'mr-0') + ' flex-1 transition-all duration-300 ease-in-out'"
   >
-    <app-main-form
-      [profile]="profile"
-      [isSubmitting]="isSubmitting()"
-      (profileChange)="handleProfileChange($event)"
-      (submitForm)="handleSubmitRequest()"
-    ></app-main-form>
+    <mat-tab-group [selectedIndex]="activeTabIndex" (selectedTabChange)="onTabChange($event)">
+      <mat-tab label="User Profile">
+        <app-user-profile-form
+          [profile]="userProfile"
+          [isSubmitting]="isSubmitting('user-profile')"
+          (profileChange)="handleProfileChange($event)"
+          (submitForm)="handleSubmitRequest()"
+        ></app-user-profile-form>
+      </mat-tab>
+      <mat-tab label="Sorting Input">
+        <app-sorting-input-form
+          [sorting]="sortingInput"
+          [isSubmitting]="isSubmitting('sorting-input')"
+          (sortingChange)="handleSortingChange($event)"
+          (submitForm)="handleSubmitRequest()"
+        ></app-sorting-input-form>
+      </mat-tab>
+    </mat-tab-group>
   </main>
 
   <!-- Sidebar Component -->
   <app-copilot-sidebar
     [isOpen]="isChatOpen"
-    [profile]="profile"
+    [feature]="activeFeature"
+    [profile]="activeFeature === 'sorting-input' ? sortingInput : userProfile"
     [showKeyboard]="isTesting"
     [autoListen]="!isTesting"
+    [allowVoiceInTesting]="isTesting"
     (profileUpdate)="handleProfileUpdate($event)"
-    (submitRequest)="onActualSubmit()"
+    (submitRequest)="onActualSubmit($event)"
     (close)="isChatOpen = false"
   >
   </app-copilot-sidebar>

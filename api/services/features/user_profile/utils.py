@@ -1,7 +1,14 @@
 import re
 from typing import List
 from api.schemas.profile import UserProfileUpdate
-from api.services.agentic.config import REQUIRED_FIELDS
+from api.services.features.user_profile.config import REQUIRED_FIELDS
+
+
+FIELD_LABELS = {
+    "full_name": "name",
+    "email": "email address",
+    "bio": "short bio",
+}
 
 
 def clean_value(value: str | None) -> str | None:
@@ -9,6 +16,10 @@ def clean_value(value: str | None) -> str | None:
         return None
     cleaned = value.strip()
     return cleaned if cleaned else None
+
+
+def humanize_fields(fields: List[str]) -> List[str]:
+    return [FIELD_LABELS.get(field, field.replace("_", " ")) for field in fields]
 
 
 def is_valid_email(email: str | None) -> bool:
@@ -32,17 +43,6 @@ def missing_fields(profile: UserProfileUpdate) -> List[str]:
         if not clean_value(getattr(profile, field_name)):
             missing.append(field_name)
     return missing
-
-
-FIELD_LABELS = {
-    "full_name": "name",
-    "email": "email address",
-    "bio": "short bio",
-}
-
-
-def humanize_fields(fields: List[str]) -> List[str]:
-    return [FIELD_LABELS.get(field, field.replace("_", " ")) for field in fields]
 
 
 def is_greeting(message: str) -> bool:

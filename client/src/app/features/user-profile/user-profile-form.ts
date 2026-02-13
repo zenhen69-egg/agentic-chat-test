@@ -4,15 +4,21 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { UserProfile } from '../../shared/models/profile';
+import { UserProfile } from './models';
 
 @Component({
-  selector: 'app-main-form',
+  selector: 'app-user-profile-form',
   standalone: true,
-  imports: [ReactiveFormsModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
-  templateUrl: './mainform.html',
+  imports: [
+    ReactiveFormsModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+  ],
+  templateUrl: './user-profile-form.html',
 })
-export class MainFormComponent implements OnChanges {
+export class UserProfileFormComponent implements OnChanges {
   @Input() profile: UserProfile = {
     fullName: '',
     email: '',

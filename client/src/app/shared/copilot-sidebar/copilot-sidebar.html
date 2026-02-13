@@ -1,11 +1,11 @@
 <div
   [class.translate-x-full]="!isOpen"
-  class="fixed right-0 top-0 h-screen w-80 bg-slate-50 border-l border-slate-200 shadow-xl flex flex-col transition-transform duration-300 ease-in-out z-50"
+  class="fixed right-0 top-0 h-screen w-96 bg-slate-50 border-l border-slate-200 shadow-xl flex flex-col transition-transform duration-300 ease-in-out z-50"
 >
   <!-- Header -->
   <div class="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
     <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-      <mat-icon class="text-indigo-600">smart_toy</mat-icon> AI Copilot
+      <mat-icon class="text-indigo-600">smart_toy</mat-icon> AI Copilot — {{ featureTitle }}
       @if (currentAction === 'request_confirmation') {
         <span class="text-xs text-orange-600">⏳</span>
       }
@@ -13,9 +13,16 @@
         <span class="text-xs text-green-600">✅</span>
       }
     </h2>
-    <div class="flex items-center gap-2">
-      <button mat-stroked-button class="text-xs" (click)="resetSession()">New Session</button>
-      <button mat-icon-button (click)="toggleSidebar()" class="text-slate-400 hover:text-slate-600">
+    <div class="flex items-center gap-1">
+      <button
+        mat-icon-button
+        class="text-slate-500 hover:text-slate-700"
+        (click)="resetSession()"
+        aria-label="New session"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+      <button mat-icon-button (click)="toggleSidebar()" class="text-slate-400 hover:text-slate-600" aria-label="Close">
         <mat-icon>chevron_right</mat-icon>
       </button>
     </div>
@@ -37,40 +44,55 @@
     <div class="voice-panel">
       <div class="flex items-center justify-between">
         <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Voice</span>
-        <span
-          class="text-xs"
-          [ngClass]="isListening ? 'text-emerald-600' : 'text-slate-500'"
-        >
-          @if (!speechSupported) {
-            Not supported
-          } @else {
-            {{ isListening ? 'Listening...' : 'Paused' }}
+        <div class="flex items-center gap-2">
+          @if (allowVoiceInTesting) {
+            <button
+              mat-icon-button
+              class="text-slate-500 hover:text-slate-700"
+              (click)="toggleVoiceEnabled()"
+              [disabled]="!speechSupported"
+              aria-label="Toggle voice"
+            >
+              <mat-icon>{{ voiceEnabled ? 'hearing' : 'hearing_disabled' }}</mat-icon>
+            </button>
           }
-        </span>
+          <span
+            class="text-xs"
+            [ngClass]="isListening ? 'text-emerald-600' : 'text-slate-500'"
+          >
+            @if (!speechSupported) {
+              Not supported
+            } @else {
+              {{ isListening ? 'Listening...' : 'Paused' }}
+            }
+          </span>
+        </div>
       </div>
       <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm min-h-[64px]">
-        {{ liveTranscript || 'Speak your details to update the profile.' }}
+        {{ liveTranscript || voicePlaceholder }}
       </div>
       @if (speechError) {
         <div class="mt-2 text-xs text-rose-600">
           {{ speechError }}
         </div>
       }
-      <div class="mt-3 flex gap-2">
+      <div class="mt-3 flex gap-2 voice-actions">
         <button
-          mat-flat-button
+          mat-icon-button
           color="primary"
           (click)="startListening()"
           [disabled]="!speechSupported || isListening || isSending"
+          aria-label="Start listening"
         >
-          Start
+          <mat-icon>mic</mat-icon>
         </button>
         <button
-          mat-stroked-button
+          mat-icon-button
           (click)="stopListening()"
           [disabled]="!isListening"
+          aria-label="Stop listening"
         >
-          Stop
+          <mat-icon>mic_off</mat-icon>
         </button>
       </div>
     </div>

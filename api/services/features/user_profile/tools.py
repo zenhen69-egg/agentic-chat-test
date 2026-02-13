@@ -1,7 +1,15 @@
 import json
 from agents import Runner, function_tool
-from api.services.agentic.agents import confirmation_agent, extraction_agent, validation_agent
-from api.services.agentic.outputs import ConfirmationOutput, ExtractionOutput, ValidationOutput
+from api.services.features.user_profile.agents import (
+    confirmation_agent,
+    extraction_agent,
+    validation_agent,
+)
+from api.services.features.user_profile.outputs import (
+    ConfirmationOutput,
+    ExtractionOutput,
+    ValidationOutput,
+)
 
 
 @function_tool(strict_mode=False)

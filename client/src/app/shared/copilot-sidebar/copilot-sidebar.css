@@ -3,6 +3,6 @@
 	flex-direction: column;
 }
 
-.voice-panel button {
-	min-width: 96px;
+.voice-actions {
+	justify-content: flex-end;
 }
